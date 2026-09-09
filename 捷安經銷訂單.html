@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>片簾建單</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --navy-900:#12202A;
+      --navy-800:#1C2E39;
+      --navy-700:#274152;
+      --brass-500:#B8874B;
+      --brass-400:#CBA06B;
+      --brass-100:#F1E4D0;
+      --cream-100:#F6F3EC;
+      --cream-50:#FBFAF6;
+      --ink-900:#262420;
+      --ink-600:#5C584F;
+      --ink-400:#9A9587;
+      --line:#E4DFD3;
+      --danger:#B4482F;
+      --danger-bg:#F8ECE7;
+      --moss:#5B7A5E;
+      --moss-bg:#E9EFE7;
+      --mono:'JetBrains Mono',monospace;
+      --serif:'Noto Serif TC',serif;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+
+    body{
+      font-family:'Noto Sans TC','Noto Sans',sans-serif;
+      background:var(--cream-100);
+      color:var(--ink-900);
+      padding:40px 20px 72px;
+      display:flex;
+      justify-content:center;
+      -webkit-font-smoothing:antialiased;
+    }
+    .page{ width:100%; max-width:800px; }
+
+    /* ── Header ── */
+    .page-head{
+      display:flex; justify-content:space-between; align-items:flex-end;
+      padding-bottom:20px; margin-bottom:24px;
+      border-bottom:1px solid var(--line);
+    }
+    .brand-mark{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .brand-mark .dot{ width:8px; height:8px; background:var(--brass-500); border-radius:50%; }
+    .brand-mark span{ font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--brass-500); text-transform:uppercase; }
+    .page-title{ font-family:var(--serif); font-weight:700; font-size:26px; letter-spacing:2px; color:var(--navy-900); line-height:1.3; }
+    .page-sub{ margin-top:6px; font-size:12.5px; color:var(--ink-600); }
+    .page-meta{ text-align:right; font-family:var(--mono); font-size:11px; color:var(--ink-400); letter-spacing:1px; line-height:1.9; }
+    .page-meta b{ display:block; color:var(--brass-500); font-weight:500; font-size:13px; }
+
+    /* ── Site bar ── */
+    .site-bar{
+      display:flex; align-items:center; gap:14px;
+      background:var(--brass-100);
+      border:1px solid #E7D5B4;
+      border-radius:3px;
+      padding:12px 16px;
+      margin-bottom:22px;
+    }
+    .site-bar label{ font-size:12px; font-weight:500; color:#7A5B2D; letter-spacing:1px; white-space:nowrap; }
+    .site-bar input{
+      flex:1; height:40px; border:1px solid #E7D5B4; background:#fff; border-radius:3px;
+      padding:0 14px; font-family:inherit; font-size:14px; color:var(--ink-900); outline:none;
+      transition:border-color .15s, box-shadow .15s;
+    }
+    .site-bar input::placeholder{ color:var(--ink-400); }
+    .site-bar input:focus{ border-color:var(--brass-500); box-shadow:0 0 0 3px rgba(184,135,75,0.15); }
+    .site-bar .pickup-item{
+      display:flex; align-items:center; gap:7px; white-space:nowrap;
+      background:#fff; border:1px solid #E7D5B4; border-radius:3px;
+      padding:0 14px; height:40px; cursor:pointer; font-size:13px; font-weight:500;
+      color:var(--ink-600); user-select:none; transition:all .15s;
+    }
+    .site-bar .pickup-item:hover{ border-color:var(--brass-500); color:var(--ink-900); }
+    .site-bar .pickup-item:has(input:checked){ background:var(--brass-100); border-color:var(--brass-500); color:#7A5B2D; }
+    .site-bar .pickup-item input[type="checkbox"]{ width:14px; height:14px; accent-color:var(--brass-500); cursor:pointer; }
+
+    .dealer-bar{ margin-bottom:10px; }
+    .dealer-bar input{ font-family:var(--mono); letter-spacing:2px; max-width:220px; }
+    .dealer-name{
+      flex:1; min-width:140px; height:40px; display:flex; align-items:center; padding:0 14px;
+      border-radius:3px; border:1px dashed #E7D5B4; font-size:13px; font-weight:500; color:var(--ink-400);
+      transition:all .15s;
+    }
+    .dealer-name.ok{ background:var(--moss-bg); border:1px solid #CFDCCB; color:var(--moss); }
+    .dealer-name.err{ background:var(--danger-bg); border:1px solid #E3B9AA; color:var(--danger); }
+    .dealer-name.pending{ color:var(--ink-600); }
+
+    /* ── Tab bar ── */
+    .tab-bar{ display:flex; align-items:flex-end; gap:4px; flex-wrap:wrap; }
+    .tab-btn{
+      display:flex; flex-direction:column; align-items:center;
+      padding:10px 20px 11px;
+      border:1px solid var(--line); border-bottom:none;
+      background:var(--cream-100);
+      border-radius:3px 3px 0 0;
+      font-family:inherit; font-size:13px; font-weight:500;
+      cursor:pointer; color:var(--ink-600);
+      transition:all .15s; position:relative; bottom:-1px; min-width:72px; letter-spacing:1px;
+    }
+    .tab-btn .tab-label{ font-size:13px; }
+    .tab-btn:hover{ color:var(--navy-900); background:var(--cream-50); }
+    .tab-btn.active{ background:var(--navy-900); color:var(--brass-400); border-color:var(--navy-900); z-index:1; }
+    .tab-add{
+      width:36px; height:36px;
+      border:1px dashed var(--brass-500);
+      background:transparent; border-radius:3px;
+      font-size:18px; cursor:pointer; color:var(--brass-500);
+      display:flex; align-items:center; justify-content:center;
+      transition:all .15s; flex-shrink:0; margin-bottom:3px; margin-left:4px;
+    }
+    .tab-add:hover{ background:var(--brass-100); }
+
+    /* ── Panel ── */
+    .track-panel{
+      display:none;
+      background:var(--cream-50);
+      border:1px solid var(--line);
+      border-top:2px solid var(--navy-900);
+      border-radius:0 3px 3px 3px;
+      padding:26px 28px 24px;
+      box-shadow:0 20px 40px -24px rgba(18,32,42,0.25);
+    }
+    .track-panel.active{ display:block; }
+
+    .panel-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; gap:12px; flex-wrap:wrap; }
+    .panel-title{ font-family:var(--serif); font-size:17px; font-weight:700; color:var(--navy-900); letter-spacing:1px; }
+    .btn-remove-track{
+      font-family:inherit; font-size:12px; color:var(--danger);
+      background:transparent; border:1px solid var(--line); border-radius:3px;
+      padding:5px 12px; cursor:pointer; transition:all .15s;
+    }
+    .btn-remove-track:hover{ background:var(--danger-bg); border-color:#E3B9AA; }
+
+    /* ── Inputs ── */
+    .input-row{ display:flex; gap:14px; margin-bottom:18px; flex-wrap:wrap; }
+    .input-group{ flex:1; min-width:100px; }
+    .input-group label{ display:block; font-size:12px; font-weight:500; color:var(--ink-600); letter-spacing:.5px; margin-bottom:7px; }
+    .input-group input{
+      width:100%; height:44px;
+      border:1px solid var(--line); background:#fff; border-radius:3px;
+      padding:0 14px; font-family:var(--mono); font-size:15px; color:var(--ink-900);
+      outline:none; transition:border-color .15s, box-shadow .15s;
+    }
+    .input-group input::placeholder{ font-family:'Noto Sans TC',sans-serif; color:var(--ink-400); font-size:13px; }
+    .input-group input:focus{ border-color:var(--brass-500); box-shadow:0 0 0 3px rgba(184,135,75,0.15); }
+    .input-group select.source-select{
+      width:100%; height:44px;
+      border:1px solid var(--line); background:#fff; border-radius:3px;
+      padding:0 12px; font-family:inherit; font-size:14px; color:var(--ink-900);
+      outline:none; cursor:pointer; transition:border-color .15s, box-shadow .15s;
+    }
+    .input-group select.source-select:focus{ border-color:var(--brass-500); box-shadow:0 0 0 3px rgba(184,135,75,0.15); }
+    .qty-group input{ background:var(--brass-100); border-color:#E7D5B4; font-weight:500; color:#7A5B2D; text-align:center; }
+    .qty-group label{ color:#7A5B2D; }
+    .qty-hint{ font-size:11px; color:var(--ink-400); margin-top:5px; }
+
+    /* ── Color mode ── */
+    .color-mode-row{ display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+    .color-mode-label{ font-size:12px; font-weight:500; color:var(--ink-600); letter-spacing:.5px; white-space:nowrap; }
+    .color-opts{ display:inline-flex; background:var(--brass-100); padding:3px; border-radius:3px; gap:2px; }
+    .color-radio{ display:none; }
+    .color-chip{
+      display:flex; align-items:center; gap:7px;
+      padding:7px 16px; border-radius:2px;
+      font-size:13px; font-weight:500; cursor:pointer;
+      transition:all .15s; user-select:none; color:var(--ink-600);
+    }
+    .color-chip:hover{ color:var(--navy-900); }
+    .color-radio:checked + .color-chip{ background:var(--navy-900); color:var(--brass-400); }
+    .color-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .dot-single{ background:var(--navy-700); }
+    .dot-double{ background:linear-gradient(135deg,var(--brass-500) 50%,var(--navy-700) 50%); }
+    .dot-multi{ background:linear-gradient(135deg,var(--brass-500) 33%,var(--navy-700) 33%,var(--navy-700) 66%,var(--moss) 66%); }
+    .color-radio:checked + .color-chip .dot-single{ background:var(--brass-400); }
+    .color-radio:checked + .color-chip .dot-double{ background:linear-gradient(135deg,var(--brass-400) 50%,var(--cream-50) 50%); }
+    .color-radio:checked + .color-chip .dot-multi{ background:linear-gradient(135deg,var(--brass-400) 33%,var(--cream-50) 33%,var(--cream-50) 66%,#8FB08F 66%); }
+
+    .color-mode-hint{
+      font-size:12px; color:var(--ink-600); margin-bottom:18px;
+      padding:8px 12px; background:var(--cream-100);
+      border-left:2px solid var(--brass-500); border-radius:0 3px 3px 0; line-height:1.6;
+    }
+
+    /* ── Warning / Result ── */
+    .warning-msg{ color:var(--danger); font-size:12.5px; font-weight:500; margin-bottom:10px; min-height:16px; line-height:1.6; }
+    .result-card{
+      background:linear-gradient(155deg,var(--navy-900) 0%,var(--navy-800) 100%);
+      color:var(--cream-50);
+      border-radius:3px;
+      padding:18px 20px;
+      margin-bottom:20px;
+      position:relative; overflow:hidden;
+    }
+    .result-card::before{
+      content:""; position:absolute; left:-10%; right:-10%; top:50%; height:1px;
+      background:rgba(203,160,107,0.16);
+    }
+    .result-card > *{ position:relative; }
+    .result-sku{ font-family:var(--mono); font-weight:500; color:var(--brass-400); font-size:18px; letter-spacing:1px; margin-bottom:10px; }
+    .info-item{ margin:4px 0; font-size:13px; color:rgba(246,243,236,0.8); }
+    .info-item strong{ font-weight:500; color:rgba(246,243,236,0.55); font-size:12px; letter-spacing:.5px; margin-right:4px; }
+    .badge{
+      display:inline-block; font-family:var(--mono); font-size:10.5px; letter-spacing:1.5px;
+      padding:3px 10px; border-radius:2px; margin-top:8px;
+      background:var(--brass-500); color:var(--navy-900);
+    }
+    .badge-single{ background:transparent; color:var(--brass-400); border:1px solid rgba(203,160,107,0.5); }
+
+    /* ── Table ── */
+    .section-title{ font-size:11px; font-weight:500; color:var(--brass-500); letter-spacing:2px; text-transform:uppercase; margin:18px 0 10px; font-family:var(--mono); }
+    table{ width:100%; border-collapse:collapse; font-size:13px; }
+    thead th{ background:var(--navy-900); color:var(--brass-400); padding:9px 12px; text-align:left; font-weight:500; font-size:12px; letter-spacing:1px; }
+    thead th:first-child{ border-radius:3px 0 0 0; }
+    thead th:last-child{ border-radius:0 3px 0 0; }
+    tbody tr:nth-child(even){ background:var(--cream-100); }
+    tbody td{ padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+    tbody td input{
+      height:36px; padding:0 10px; font-size:13px; border:1px solid var(--line); border-radius:3px;
+      background:#fff; font-family:inherit; color:var(--ink-900); outline:none; transition:border-color .15s, box-shadow .15s;
+    }
+    tbody td input[type="number"]{ font-family:var(--mono); }
+    .fab-select{
+      width:100%; height:36px; padding:0 8px; font-family:var(--mono); font-size:13px;
+      border:1px solid var(--line); border-radius:3px; background:#fff; color:var(--ink-900); outline:none;
+      transition:border-color .15s, box-shadow .15s; cursor:pointer;
+    }
+    .fab-select:focus{ border-color:var(--brass-500); box-shadow:0 0 0 3px rgba(184,135,75,0.15); }
+    .th-swatch, .fab-swatch-cell{ width:64px; text-align:center; }
+    .fab-swatch{
+      width:48px; height:48px; margin:0 auto; border-radius:3px;
+      border:1px solid var(--line); background-color:#fff;
+      background-size:cover; background-position:center; background-repeat:no-repeat;
+      box-shadow:0 1px 3px rgba(18,32,42,0.15);
+    }
+    .fab-swatch.empty{ background:repeating-linear-gradient(45deg,var(--cream-100) 0 6px,#fff 6px 12px); }
+    tbody td input:focus{ border-color:var(--brass-500); box-shadow:0 0 0 3px rgba(184,135,75,0.15); }
+
+    tr.fab-row-single td:first-child  { color:var(--navy-700); font-weight:500; white-space:nowrap; }
+    tr.fab-row-double-a td:first-child{ color:var(--navy-700); font-weight:500; white-space:nowrap; }
+    tr.fab-row-double-b td:first-child{ color:var(--brass-500); font-weight:500; white-space:nowrap; }
+    tr.fab-row-multi td:first-child   { color:var(--ink-600); font-weight:500; white-space:nowrap; }
+    tr.fab-row-multi.row-off td:not(.pc-cell){ opacity:.35; }
+    tr.fab-row-multi.row-off select, tr.fab-row-multi.row-off input.fab-len-off{ background:var(--cream-100); cursor:not-allowed; }
+
+    .pc-cell{ width:96px; }
+    .pc-input{
+      width:64px; height:36px; padding:0 6px;
+      font-family:var(--mono); font-size:13px; font-weight:500; text-align:center;
+      border:1px solid var(--line); border-radius:3px; background:#fff; outline:none; transition:border-color .15s, box-shadow .15s;
+    }
+    .pc-input:focus{ border-color:var(--brass-500); box-shadow:0 0 0 3px rgba(184,135,75,0.15); }
+    .pc-input.err{ border-color:var(--danger); background:var(--danger-bg); }
+    .pc-fixed{ font-family:var(--mono); font-weight:500; color:var(--navy-700); font-size:13px; }
+    .pc-derived{ font-family:var(--mono); font-weight:500; color:var(--brass-500); font-size:13px; }
+
+    .piece-total-hint{ font-size:12px; padding:7px 12px; border-radius:3px; margin-bottom:8px; font-weight:500; font-family:var(--mono); letter-spacing:.3px; }
+    .piece-total-hint.ok{ background:var(--moss-bg); color:var(--moss); border:1px solid #CFDCCB; }
+    .piece-total-hint.warn{ background:var(--danger-bg); color:var(--danger); border:1px solid #E3B9AA; }
+
+    /* ── Checkboxes ── */
+    .checkbox-group{ display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+    .checkbox-item{
+      display:flex; align-items:center; gap:8px;
+      background:#fff; border:1px solid var(--line); border-radius:3px;
+      padding:8px 14px; cursor:pointer; font-size:13px; color:var(--ink-600);
+      transition:all .15s; user-select:none;
+    }
+    .checkbox-item:hover{ border-color:var(--brass-500); color:var(--ink-900); }
+    .checkbox-item:has(input:checked){ background:var(--brass-100); border-color:#E7D5B4; color:#7A5B2D; }
+    .checkbox-item input[type="checkbox"]{ width:14px; height:14px; accent-color:var(--brass-500); cursor:pointer; }
+
+    hr.divider{ border:none; border-top:1px solid var(--line); margin:22px 0 14px; }
+
+    /* ── Lock panel width ── */
+    .panel-title-wrap{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .lock-wrap{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .lock-item{
+      display:flex; align-items:center; gap:7px;
+      background:#fff; border:1px solid var(--line); border-radius:3px;
+      padding:5px 12px; cursor:pointer; font-size:12px; font-weight:500;
+      color:var(--ink-600); user-select:none; transition:all .15s;
+    }
+    .lock-item:hover{ border-color:var(--brass-500); color:var(--ink-900); }
+    .lock-item.on{ background:var(--brass-100); border-color:#E7D5B4; color:#7A5B2D; }
+    .lock-item input[type="checkbox"]{ width:13px; height:13px; accent-color:var(--brass-500); cursor:pointer; }
+    .lock-opts{ display:none; background:var(--brass-100); padding:3px; border-radius:3px; gap:2px; }
+    .lock-opts.show{ display:flex; }
+    .lock-radio{ display:none; }
+    .lock-chip{
+      padding:4px 12px; border-radius:2px;
+      font-family:var(--mono); font-size:12px; font-weight:500; color:var(--ink-600); cursor:pointer;
+      user-select:none; transition:all .15s;
+    }
+    .lock-chip:hover{ color:var(--navy-900); }
+    .lock-radio:checked + .lock-chip{ background:var(--navy-900); color:var(--brass-400); }
+
+    .tc-label{ font-size:12px; font-weight:500; color:var(--ink-600); letter-spacing:.5px; margin-left:6px; white-space:nowrap; }
+    .tc-opts.field-err{ outline:2px solid var(--danger); outline-offset:1px; }
+
+    /* ── Bottom bar ── */
+    .bottom-bar{
+      background:var(--cream-50);
+      border:1px solid var(--line);
+      border-radius:3px;
+      padding:22px 28px;
+      margin-top:22px;
+      display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap;
+    }
+    .bottom-bar .input-group{ flex:1; min-width:170px; }
+    .bottom-bar .input-group input{ font-family:var(--mono); }
+    .order-date{
+      height:44px; display:flex; align-items:center; padding:0 14px;
+      border:1px solid var(--line); border-radius:3px; background:var(--cream-100);
+      font-family:var(--mono); font-size:15px; color:var(--ink-600); letter-spacing:.5px;
+    }
+    .btn-export{
+      width:100%; height:50px;
+      background:var(--navy-900); color:var(--brass-400);
+      font-family:'Noto Sans TC',sans-serif; font-size:14px; font-weight:700; letter-spacing:2px;
+      border:none; border-radius:3px; cursor:pointer; transition:background .15s;
+    }
+    .btn-export:hover{ background:var(--navy-800); }
+    .btn-export:active{ transform:scale(0.995); }
+    .export-preview{ font-size:11.5px; color:var(--ink-400); margin-top:9px; line-height:1.9; }
+    .export-preview strong{ color:var(--brass-500); font-family:var(--mono); font-weight:500; }
+    .export-preview span{
+      display:inline-block; background:var(--cream-100); border:1px solid var(--line); border-radius:2px;
+      padding:1px 8px; margin:2px 4px 2px 0; font-size:11px; color:var(--ink-600);
+    }
+
+    /* ── Required-field error state ── */
+    .field-err{ border-color:var(--danger) !important; background:var(--danger-bg) !important; box-shadow:0 0 0 3px rgba(180,72,47,0.15) !important; }
+    .tab-btn.tab-err{ color:var(--danger); }
+    .tab-btn.tab-err.active{ color:#F2B8A8; }
+    .export-status{ margin-top:8px; font-size:12.5px; line-height:1.7; white-space:pre-line; }
+    .export-status.err{ color:var(--danger); font-weight:500; }
+    .export-status.ok{ color:var(--moss); font-weight:500; }
+    .export-status.pending{ color:var(--ink-600); }
+
+    .footer-note{ margin-top:28px; font-size:11.5px; color:var(--ink-400); text-align:center; letter-spacing:.5px; }
+
+    @media (max-width:640px){
+      body{ padding:20px 12px 56px; }
+      .page-head{ flex-direction:column; align-items:flex-start; gap:10px; }
+      .page-meta{ text-align:left; }
+      .track-panel{ padding:20px 16px; }
+      .bottom-bar{ padding:18px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="page-head">
+    <div class="page-title">片簾建單</div>
+  </div>
+
+  <!-- 經銷統編 -->
+  <div class="site-bar dealer-bar">
+    <label for="dealerInput">經銷統編 <span style="font-family:var(--mono);color:var(--brass-500);margin-left:4px;font-size:10px;letter-spacing:2px;">DEALER</span></label>
+    <input type="text" id="dealerInput" inputmode="numeric" maxlength="8" placeholder="請輸入 8 碼統一編號（必填）" oninput="onDealerInput()">
+    <div class="dealer-name" id="dealerName">— 尚未驗證 —</div>
+  </div>
+
+  <!-- 案場欄位 -->
+  <div class="site-bar">
+    <label for="siteInput">案場 <span style="font-family:var(--mono);color:var(--brass-500);margin-left:4px;font-size:10px;letter-spacing:2px;">SITE</span></label>
+    <input type="text" id="siteInput" placeholder="請輸入案場名稱（必填）">
+    <label class="pickup-item" for="pickupInput"><input type="checkbox" id="pickupInput"> 自取</label>
+  </div>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-add" id="btnAddTrack" onclick="addTrack()" title="新增軌道組">+</button>
+  </div>
+  <div id="panelsContainer"></div>
+
+  <div class="bottom-bar">
+    <div class="input-group">
+      <label>建單日期</label>
+      <div class="order-date" id="orderDateText"></div>
+    </div>
+    <div class="input-group" style="min-width:200px;">
+      <label for="sourceInput">廣告來源</label>
+      <select id="sourceInput" class="source-select">
+        <option value="">— 請選擇 —</option>
+        <option value="AI-ChatGPT">AI-ChatGPT</option>
+        <option value="AI-Gemini">AI-Gemini</option>
+        <option value="FB社團">FB社團</option>
+        <option value="Facebook">Facebook</option>
+        <option value="Google搜尋">Google搜尋</option>
+        <option value="IG">IG</option>
+        <option value="LINE廣告">LINE廣告</option>
+        <option value="Pmax（手機跳出廣告）">Pmax（手機跳出廣告）</option>
+        <option value="Threads脆">Threads脆</option>
+        <option value="TikTok抖音">TikTok抖音</option>
+        <option value="Youtube廣告">Youtube廣告</option>
+        <option value="未知">未知</option>
+        <option value="配合設計師">配合設計師</option>
+        <option value="自行開發">自行開發</option>
+        <option value="親友介紹">親友介紹</option>
+        <option value="先前買過">先前買過</option>
+        <option value="論壇">論壇</option>
+        <option value="其他">其他</option>
+        <option value="網紅小行">網紅小行</option>
+        <option value="網紅（請問是哪一位呢?）">網紅（請問是哪一位呢?）</option>
+        <option value="電商網站">電商網站</option>
+        <option value="店面來客">店面來客</option>
+        <option value="捷安轉介">捷安轉介</option>
+        <option value="建材展">建材展</option>
+        <option value="特約企業">特約企業</option>
+      </select>
+    </div>
+    <div style="flex:3;min-width:220px;">
+      <button class="btn-export" onclick="exportToSheet()">匯出，並LINE群組</button>
+      <div class="export-preview" id="exportPreview"></div>
+      <div class="export-status" id="exportStatus"></div>
+    </div>
+  </div>
+  <p class="footer-note">© 捷安工業有限公司 經銷商專用系統</p>
+
+<script>
+const products = [
+  { min:85,  max:145, panel_width:40, pieces:4,  sku:"K1318", is_double_track:false },
+  { min:100, max:180, panel_width:40, pieces:5,  sku:"K1622", is_double_track:false },
+  { min:120, max:215, panel_width:40, pieces:6,  sku:"K1825", is_double_track:false },
+  { min:145, max:250, panel_width:40, pieces:7,  sku:"K2129", is_double_track:false },
+  { min:125, max:225, panel_width:60, pieces:4,  sku:"K1624", is_double_track:false },
+  { min:150, max:280, panel_width:60, pieces:5,  sku:"K2029", is_double_track:false },
+  { min:180, max:335, panel_width:60, pieces:6,  sku:"K2334", is_double_track:false },
+  { min:285, max:390, panel_width:60, pieces:7,  sku:"K2739", is_double_track:false },
+  { min:330, max:445, panel_width:60, pieces:8,  sku:"K3145", is_double_track:true  },
+  { min:305, max:555, panel_width:60, pieces:10, sku:"K3755", is_double_track:true  },
+  { min:355, max:665, panel_width:60, pieces:12, sku:"K4465", is_double_track:true  },
+  { min:330, max:455, panel_width:80, pieces:6,  sku:"K2844", is_double_track:false },
+  { min:300, max:530, panel_width:80, pieces:7,  sku:"K3251", is_double_track:false },
+  { min:330, max:605, panel_width:80, pieces:8,  sku:"K3758", is_double_track:true  },
+  { min:495, max:755, panel_width:80, pieces:10, sku:"K4571", is_double_track:true  },
+  { min:495, max:905, panel_width:80, pieces:12, sku:"K5486", is_double_track:true  }
+];
+
+/* ─── 布種編號（對應 images/<編號>.jpg） ─── */
+const FABRIC_EXT = '.jpg';
+const FABRIC_CODES = [
+  'P10', 'P11', 'P12', 'P13', 'P20', 'P21', 'P22', 'P23', 'P23-1', 'P24',
+  'P25', 'P26', 'P30', 'P31', 'P32', 'P33', 'P34', 'p35', 'P36', 'P37',
+  'P38', 'P39', 'P40', 'P41', 'P42', 'TW001', 'TW002', 'TW002-2', 'TW003', 'TW004',
+  'TW005', 'TW010', 'TW011', 'TW012', 'TW013', 'TW014', 'TW015', 'TW016', 'TW017', 'TW018',
+  'TW019', 'TW020', 'TW025', 'TW026', 'TW027', 'TW028', 'TW029', 'TW030', 'TW032', 'TW033',
+  'TW034', 'TW035', 'TW036', 'TW037', 'TW038', 'TW039', 'TW040', 'TW041', 'TW042', 'TW043'
+];
+function fabricImgPath(code) { return code ? encodeURI(`images/${code}${FABRIC_EXT}`) : ''; }
+function fabricSelectHtml(id, selected) {
+  const opts = FABRIC_CODES.map(c => `<option value="${c}"${c === selected ? ' selected' : ''}>${c}</option>`).join('');
+  return `<select class="fab-type-${id} fab-select" onchange="onFabricChange(this)"><option value="">— 請選擇 —</option>${opts}</select>`;
+}
+function fabricSwatchHtml(code) {
+  return code
+    ? `<div class="fab-swatch" style="background-image:url('${fabricImgPath(code)}')" title="${code}"></div>`
+    : `<div class="fab-swatch empty"></div>`;
+}
+function onFabricChange(sel) {
+  const cell = sel.closest('tr')?.querySelector('.fab-swatch-cell');
+  if (cell) cell.innerHTML = fabricSwatchHtml(sel.value);
+}
+
+const NUM_LABELS = ['第一組','第二組','第三組','第四組','第五組','第六組','第七組','第八組'];
+let trackCount = 0;
+const tracks = [];
+
+/* ─── Add / Remove ─── */
+function addTrack() {
+  if (trackCount >= 8) return;
+  const id = 'tr' + Date.now();
+  const idx = tracks.length;
+  tracks.push({ id });
+  trackCount++;
+  _renderTab(id, idx);
+  _renderPanel(id, idx);
+  switchTab(id);
+  updateExportPreview();
+}
+
+function removeTrack(id) {
+  if (tracks.length <= 1) { alert('至少保留一組軌道。'); return; }
+  const idx = tracks.findIndex(t => t.id === id);
+  tracks.splice(idx, 1);
+  trackCount--;
+  document.getElementById('tab_' + id)?.remove();
+  document.getElementById('panel_' + id)?.remove();
+  _renumberAll();
+  switchTab(tracks[Math.min(idx, tracks.length - 1)].id);
+  updateExportPreview();
+}
+
+function _renumberAll() {
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.querySelector('.tab-label').textContent = NUM_LABELS[i] || ('第'+(i+1)+'組');
+  });
+  document.querySelectorAll('.track-panel .panel-title').forEach((el, i) => {
+    el.textContent = (NUM_LABELS[i] || ('第'+(i+1)+'組')) + ' 軌道規格';
+  });
+  document.getElementById('btnAddTrack').style.display = tracks.length >= 8 ? 'none' : '';
+}
+
+/* ─── Render tab ─── */
+function _renderTab(id, idx) {
+  const bar = document.getElementById('tabBar');
+  const addBtn = document.getElementById('btnAddTrack');
+  const btn = document.createElement('button');
+  btn.className = 'tab-btn';
+  btn.id = 'tab_' + id;
+  btn.innerHTML = `<span class="tab-label">${NUM_LABELS[idx]||('第'+(idx+1)+'組')}</span>`;
+  btn.onclick = () => switchTab(id);
+  bar.insertBefore(btn, addBtn);
+}
+
+/* ─── Render panel ─── */
+function _renderPanel(id, idx) {
+  const container = document.getElementById('panelsContainer');
+  const div = document.createElement('div');
+  div.className = 'track-panel';
+  div.id = 'panel_' + id;
+  div.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title-wrap">
+        <div class="panel-title">${NUM_LABELS[idx]||('第'+(idx+1)+'組')} 軌道規格</div>
+        <div class="lock-wrap">
+          <label class="lock-item" id="lockitem_${id}">
+            <input type="checkbox" id="lock_${id}" onchange="onLockChange('${id}')"> 鎖定寬幅
+          </label>
+          <div class="lock-opts" id="lockopts_${id}">
+            <input class="lock-radio" type="radio" name="lw_${id}" id="lw40_${id}" value="40" onchange="calcTrack('${id}')">
+            <label class="lock-chip" for="lw40_${id}">40 cm</label>
+            <input class="lock-radio" type="radio" name="lw_${id}" id="lw60_${id}" value="60" checked onchange="calcTrack('${id}')">
+            <label class="lock-chip" for="lw60_${id}">60 cm</label>
+            <input class="lock-radio" type="radio" name="lw_${id}" id="lw80_${id}" value="80" onchange="calcTrack('${id}')">
+            <label class="lock-chip" for="lw80_${id}">80 cm</label>
+          </div>
+          <span class="tc-label">軌道顏色</span>
+          <div class="lock-opts show tc-opts" id="tcopts_${id}">
+            <input class="lock-radio" type="radio" name="tc_${id}" id="tc_w_${id}" value="白" onchange="onTrackColorChange('${id}')">
+            <label class="lock-chip" for="tc_w_${id}">白</label>
+            <input class="lock-radio" type="radio" name="tc_${id}" id="tc_b_${id}" value="黑" onchange="onTrackColorChange('${id}')">
+            <label class="lock-chip" for="tc_b_${id}">黑</label>
+          </div>
+        </div>
+      </div>
+      <button class="btn-remove-track" onclick="removeTrack('${id}')">移除此組</button>
+    </div>
+
+    <!-- Row 1: width / height / qty -->
+    <div class="input-row">
+      <div class="input-group">
+        <label>遮蔽寬度 (cm)</label>
+        <input type="number" id="w_${id}" placeholder="例：130" min="1" oninput="calcTrack('${id}')">
+      </div>
+      <div class="input-group">
+        <label>高度 (cm)</label>
+        <input type="number" id="h_${id}" placeholder="例：220" min="1" oninput="syncHeight('${id}')">
+      </div>
+      <div class="input-group qty-group" style="max-width:110px;">
+        <label>數量（份）</label>
+        <input type="number" id="qty_${id}" value="1" min="1" max="20" oninput="onQtyChange('${id}')" placeholder="1">
+        <div class="qty-hint">輸出至試算表的份數欄</div>
+      </div>
+    </div>
+
+    <!-- Row 2: color mode -->
+    <div class="color-mode-row">
+      <span class="color-mode-label">布色模式</span>
+      <div class="color-opts">
+        <input class="color-radio" type="radio" name="clr_${id}" id="clr_s_${id}" value="single" checked onchange="onColorChange('${id}')">
+        <label class="color-chip" for="clr_s_${id}"><span class="color-dot dot-single"></span>單色</label>
+
+        <input class="color-radio" type="radio" name="clr_${id}" id="clr_d_${id}" value="double" onchange="onColorChange('${id}')">
+        <label class="color-chip" for="clr_d_${id}"><span class="color-dot dot-double"></span>雙色</label>
+
+        <input class="color-radio" type="radio" name="clr_${id}" id="clr_m_${id}" value="multi"  onchange="onColorChange('${id}')">
+        <label class="color-chip" for="clr_m_${id}"><span class="color-dot dot-multi"></span>多色</label>
+      </div>
+    </div>
+    <div class="color-mode-hint" id="clrhint_${id}">單色：全部片數共用同一種布料，布料明細只顯示 1 列。</div>
+
+    <div class="warning-msg" id="msg_${id}"></div>
+    <div id="res_${id}"></div>
+
+    <div id="mat_${id}" style="display:none;">
+      <div class="section-title">布料明細 · Fabric</div>
+      <div class="piece-total-hint" id="pctotal_${id}" style="display:none;"></div>
+      <table>
+        <thead><tr><th>色別／片號</th><th>片數</th><th>布種</th><th class="th-swatch">花色</th><th>長度 (cm)</th></tr></thead>
+        <tbody id="tbody_${id}"></tbody>
+      </table>
+    </div>
+
+    <div id="opts_${id}" style="display:none;">
+      <hr class="divider">
+      <div class="section-title">加工選項 · Options</div>
+      <div class="checkbox-group">
+        <label class="checkbox-item"><input type="checkbox" id="ck_dt_${id}"> 雙馬尾製作</label>
+        <label class="checkbox-item"><input type="checkbox" id="ck_rd_${id}"> 轉向拉棒五金</label>
+        <label class="checkbox-item"><input type="checkbox" id="ck_fp_${id}"> 附防焰證明</label>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+/* ─── Switch tab ─── */
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.track-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab_' + id)?.classList.add('active');
+  document.getElementById('panel_' + id)?.classList.add('active');
+}
+
+/* ─── Qty ─── */
+function onQtyChange(id) {
+  updateExportPreview();
+}
+
+/* ─── Color mode ─── */
+function getColorMode(id) {
+  const sel = document.querySelector(`input[name="clr_${id}"]:checked`);
+  return sel ? sel.value : 'single';
+}
+
+const COLOR_HINTS = {
+  single: '單色：全部片數共用同一種布料，布料明細只顯示 1 列。',
+  double: '雙色：兩種布料交替排列，布料明細顯示 2 列（色A／色B）。',
+  multi:  '多色：每片可填不同布料，布料明細依片數各顯示一列。'
+};
+
+function onColorChange(id) {
+  const mode = getColorMode(id);
+  const hintEl = document.getElementById('clrhint_' + id);
+  if (hintEl) hintEl.textContent = COLOR_HINTS[mode];
+  rebuildFabricRows(id);
+}
+
+/* ─── Track color 白/黑 ─── */
+function getTrackColor(id) {
+  const sel = document.querySelector(`input[name="tc_${id}"]:checked`);
+  return sel ? sel.value : '';
+}
+function onTrackColorChange(id) {
+  document.getElementById('tcopts_' + id)?.classList.remove('field-err');
+  updateExportPreview();
+}
+
+/* ─── Lock panel width ─── */
+function getLockedWidth(id) {
+  const on = document.getElementById('lock_' + id)?.checked;
+  if (!on) return null;
+  const sel = document.querySelector(`input[name="lw_${id}"]:checked`);
+  return sel ? parseInt(sel.value) : null;
+}
+
+function onLockChange(id) {
+  const on   = document.getElementById('lock_' + id)?.checked;
+  const item = document.getElementById('lockitem_' + id);
+  const opts = document.getElementById('lockopts_' + id);
+  item?.classList.toggle('on', !!on);
+  opts?.classList.toggle('show', !!on);
+  if (on) {
+    const wEl  = document.getElementById('w_' + id);
+    const best = wEl?.dataset.best ? JSON.parse(wEl.dataset.best) : null;
+    if (best) {
+      const r = document.getElementById('lw' + best.panel_width + '_' + id);
+      if (r) r.checked = true;
+    }
+  }
+  calcTrack(id);
+}
+
+/* ─── Calc track (on width change) ─── */
+function calcTrack(id) {
+  const wEl    = document.getElementById('w_' + id);
+  const hEl    = document.getElementById('h_' + id);
+  const msgEl  = document.getElementById('msg_' + id);
+  const resEl  = document.getElementById('res_' + id);
+  const matEl  = document.getElementById('mat_' + id);
+  const optsEl = document.getElementById('opts_' + id);
+
+  const width  = parseFloat(wEl.value);
+  const height = parseFloat(hEl?.value);
+
+  msgEl.innerHTML = '';
+  resEl.innerHTML = '';
+  matEl.style.display  = 'none';
+  optsEl.style.display = 'none';
+  delete wEl.dataset.best;
+
+  if (isNaN(width) || width <= 0) { updateExportPreview(); return; }
+  if (width < 85)  { msgEl.innerHTML = '⚠ 低於最小標準遮蔽寬度（85 cm）。'; updateExportPreview(); return; }
+  if (width > 905) { msgEl.innerHTML = '⚠ 超出最大標準遮蔽寬度（905 cm）。'; updateExportPreview(); return; }
+
+  const lockW = getLockedWidth(id);
+  let matched = products.filter(p => width >= p.min && width <= p.max);
+  if (!matched.length) { msgEl.innerHTML = '⚠ 該尺寸無對應標準規格。'; updateExportPreview(); return; }
+
+  if (lockW) {
+    const inWidth = matched.filter(p => p.panel_width === lockW);
+    if (!inWidth.length) {
+      const avail = [...new Set(matched.map(p => p.panel_width))].sort((a,b)=>a-b).join(' / ');
+      msgEl.innerHTML = `⚠ 遮蔽寬度 ${width} cm 無對應「單片寬幅 ${lockW} cm」的規格，可用寬幅：${avail} cm。`;
+      updateExportPreview(); return;
+    }
+    matched = inWidth;
+  }
+  matched.sort((a,b) => a.pieces - b.pieces);
+  const best = matched[0];
+  const pieceNote = lockW ? `（鎖定寬幅 ${lockW} cm）` : '（最少片數）';
+  wEl.dataset.best = JSON.stringify(best);
+
+  const trackBadge = best.is_double_track
+    ? `<span class="badge">雙軌單開系列</span>`
+    : `<span class="badge badge-single">單軌系列</span>`;
+
+  resEl.innerHTML = `
+    <div class="result-card">
+      <div class="result-sku"><span style="font-size:11px;letter-spacing:2px;color:rgba(246,243,236,0.5);margin-right:10px;">推薦商品編號</span>${best.sku}</div>
+      <div class="info-item"><strong>組合片數：</strong>${best.pieces} 片${pieceNote}</div>
+      <div class="info-item"><strong>單片寬幅：</strong>${best.panel_width} cm</div>
+      <div class="info-item"><strong>適用遮蔽寬度：</strong>${best.min} ~ ${best.max} cm</div>
+      <div>${trackBadge}</div>
+    </div>`;
+
+  rebuildFabricRows(id);
+  matEl.style.display  = 'block';
+  optsEl.style.display = 'block';
+  updateExportPreview();
+}
+
+/* ─── Rebuild fabric rows based on color mode ─── */
+function rebuildFabricRows(id) {
+  const wEl    = document.getElementById('w_' + id);
+  const hEl    = document.getElementById('h_' + id);
+  const matEl  = document.getElementById('mat_' + id);
+  const tbody  = document.getElementById('tbody_' + id);
+  if (!tbody) return;
+
+  const best = wEl?.dataset.best ? JSON.parse(wEl.dataset.best) : null;
+  if (!best) return;
+
+  const height      = parseFloat(hEl?.value);
+  const defaultLen  = (!isNaN(height) && height > 5) ? (height - 5) : '';
+  const mode        = getColorMode(id);
+  const total       = best.pieces;
+
+  const oldTypes  = [...tbody.querySelectorAll('.fab-type-' + id)].map(el => el.value);
+  const oldLens   = [...tbody.querySelectorAll('.fab-len-'  + id)].map(el => el.value);
+  const oldPcVals = [...tbody.querySelectorAll('.pc-input-' + id)].map(el => parseInt(el.value) || 0);
+
+  tbody.innerHTML = '';
+  const hintEl = document.getElementById('pctotal_' + id);
+
+  if (mode === 'single') {
+    if (hintEl) hintEl.style.display = 'none';
+    const tr = document.createElement('tr');
+    tr.className = 'fab-row-single';
+    tr.innerHTML = `
+      <td>全部</td>
+      <td class="pc-cell"><span class="pc-fixed">${total} 片</span></td>
+      <td>${fabricSelectHtml(id, oldTypes[0]||'')}</td>
+      <td class="fab-swatch-cell">${fabricSwatchHtml(oldTypes[0]||'')}</td>
+      <td><input type="number" class="fab-len-${id}"  value="${oldLens[0]||defaultLen}" min="1" placeholder="cm" style="width:100%"></td>`;
+    tbody.appendChild(tr);
+
+  } else if (mode === 'double') {
+    if (hintEl) { hintEl.style.display = 'block'; }
+    const prevA = oldPcVals[0] || Math.floor(total / 2);
+    const initA = Math.min(Math.max(1, prevA), total - 1);
+    const initB = total - initA;
+
+    const trA = document.createElement('tr');
+    trA.className = 'fab-row-double-a';
+    trA.id = `frow_a_${id}`;
+    trA.innerHTML = `
+      <td>色 A</td>
+      <td class="pc-cell">
+        <input type="number" class="pc-input pc-input-${id}" id="pca_${id}"
+               value="${initA}" min="1" max="${total-1}"
+               oninput="onDoubleAChange('${id}')" style="width:64px">
+        <span style="font-size:0.75rem;color:var(--muted);margin-left:2px;">片</span>
+      </td>
+      <td>${fabricSelectHtml(id, oldTypes[0]||'')}</td>
+      <td class="fab-swatch-cell">${fabricSwatchHtml(oldTypes[0]||'')}</td>
+      <td><input type="number" class="fab-len-${id}"  value="${oldLens[0]||defaultLen}" min="1" placeholder="cm" style="width:100%"></td>`;
+    tbody.appendChild(trA);
+
+    const trB = document.createElement('tr');
+    trB.className = 'fab-row-double-b';
+    trB.innerHTML = `
+      <td>色 B</td>
+      <td class="pc-cell"><span class="pc-derived" id="pcb_${id}">${initB} 片</span></td>
+      <td>${fabricSelectHtml(id, oldTypes[1]||'')}</td>
+      <td class="fab-swatch-cell">${fabricSwatchHtml(oldTypes[1]||'')}</td>
+      <td><input type="number" class="fab-len-${id}"  value="${oldLens[1]||defaultLen}" min="1" placeholder="cm" style="width:100%"></td>`;
+    tbody.appendChild(trB);
+
+    _updateDoubleHint(id, total, initA);
+
+  } else {
+    if (hintEl) { hintEl.style.display = 'block'; }
+
+    for (let i = 0; i < total; i++) {
+      const initPc = (oldPcVals[i] !== undefined && oldPcVals.length === total)
+        ? oldPcVals[i]
+        : 1;
+      const tr = document.createElement('tr');
+      tr.className = 'fab-row-multi';
+      tr.innerHTML = `
+        <td>第 ${i+1} 片</td>
+        <td class="pc-cell">
+          <input type="number" class="pc-input pc-input-${id}" id="pcm_${id}_${i}"
+                 value="${initPc}" min="0" max="${total}"
+                 oninput="onMultiPcChange('${id}')" style="width:52px">
+          <span style="font-size:0.75rem;color:var(--muted);margin-left:2px;">片</span>
+        </td>
+        <td>${fabricSelectHtml(id, oldTypes[i]||'')}</td>
+      <td class="fab-swatch-cell">${fabricSwatchHtml(oldTypes[i]||'')}</td>
+        <td><input type="number" class="fab-len-${id}"  value="${oldLens[i]||defaultLen}" min="1" placeholder="cm" style="width:100%"></td>`;
+      tbody.appendChild(tr);
+    }
+    _updateMultiHint(id, total);
+    _applyMultiRowState(id);
+  }
+
+  matEl.style.display = 'block';
+}
+
+/* ── Multi: 片數 0 → 該列免選布種、長度停用 ── */
+function _applyMultiRowState(id) {
+  document.querySelectorAll(`#tbody_${id} tr.fab-row-multi`).forEach(tr => {
+    const pc  = parseInt(tr.querySelector('.pc-input-' + id)?.value) || 0;
+    const off = pc <= 0;
+    const sel = tr.querySelector('.fab-type-' + id);
+    const len = tr.querySelector('.fab-len-' + id);
+    tr.classList.toggle('row-off', off);
+    if (sel) { sel.disabled = off; sel.classList.remove('field-err'); }
+    if (len) { len.disabled = off; len.classList.toggle('fab-len-off', off); }
+  });
+}
+
+/* ── Double: 色A changed → recalc 色B ── */
+function onDoubleAChange(id) {
+  const wEl  = document.getElementById('w_' + id);
+  const best = wEl?.dataset.best ? JSON.parse(wEl.dataset.best) : null;
+  if (!best) return;
+  const total = best.pieces;
+  const pcAEl = document.getElementById('pca_' + id);
+  let valA = parseInt(pcAEl?.value) || 1;
+  valA = Math.min(Math.max(1, valA), total - 1);
+  const valB = total - valA;
+  const pcBEl = document.getElementById('pcb_' + id);
+  if (pcBEl) pcBEl.textContent = valB + ' 片';
+  _updateDoubleHint(id, total, valA);
+}
+
+function _updateDoubleHint(id, total, valA) {
+  const hintEl = document.getElementById('pctotal_' + id);
+  if (!hintEl) return;
+  const valB = total - valA;
+  hintEl.className = 'piece-total-hint ok';
+  hintEl.textContent = `色A ${valA} 片 ＋ 色B ${valB} 片 ＝ 合計 ${total} 片 ✓`;
+}
+
+/* ── Multi: any piece-count changed → validate sum ── */
+function onMultiPcChange(id) {
+  const wEl  = document.getElementById('w_' + id);
+  const best = wEl?.dataset.best ? JSON.parse(wEl.dataset.best) : null;
+  if (!best) return;
+  _updateMultiHint(id, best.pieces);
+  _applyMultiRowState(id);
+}
+
+function _updateMultiHint(id, total) {
+  const hintEl  = document.getElementById('pctotal_' + id);
+  const inputs  = document.querySelectorAll('.pc-input-' + id);
+  if (!hintEl) return;
+  let sum = 0;
+  inputs.forEach(el => { sum += Math.max(0, parseInt(el.value) || 0); });
+  const ok = sum === total;
+  inputs.forEach(el => el.classList.toggle('err', !ok));
+  hintEl.className = 'piece-total-hint ' + (ok ? 'ok' : 'warn');
+  hintEl.textContent = ok
+    ? `各列片數合計 ${sum} 片 ＝ 總片數 ${total} 片 ✓`
+    : `⚠ 各列片數合計 ${sum} 片，需等於總片數 ${total} 片（差 ${total - sum} 片）`;
+}
+
+/* ─── Sync height → fabric lengths ─── */
+function syncHeight(id) {
+  const height = parseFloat(document.getElementById('h_' + id)?.value);
+  const len = (!isNaN(height) && height > 5) ? (height - 5) : '';
+  document.querySelectorAll(`.fab-len-${id}`).forEach(el => { el.value = len; });
+  calcTrack(id);
+}
+
+/* ─── Export preview ─── */
+function updateExportPreview() {
+  const preview = document.getElementById('exportPreview');
+  if (!preview) return;
+  const pillsClean = [];
+  tracks.forEach((t, idx) => {
+    const label = NUM_LABELS[idx] || ('第'+(idx+1)+'組');
+    const hasBest = !!document.getElementById('w_' + t.id)?.dataset.best;
+    const qty = Math.max(1, parseInt(document.getElementById('qty_' + t.id)?.value) || 1);
+    pillsClean.push(`<span title="${hasBest ? '有規格' : '尚無規格'}">${label}${hasBest ? '' : ' ⚠'}${qty > 1 ? '（×'+qty+'）' : ''}</span>`);
+  });
+  preview.innerHTML = `寫入後共 <strong>${tracks.length + 1}</strong> 個工作表（含全案明細總表）：<span>全案明細總表</span>${pillsClean.join('')}`;
+}
+
+/* ─── Export → Google Sheets（透過 Apps Script 網頁應用程式） ─── */
+/* 部署 Apps Script 後，把「網頁應用程式 URL」貼在這裡（結尾為 /exec） */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbye3PDffeA5iUvQYSXb3Io8P8mSm5GF600bX7O7V0EWwoNH6Ac-2cMqi1wDxUNDWOIuGw/exec';
+
+/* ─── 經銷統編驗證（清單維護於 code.gs，前端只查詢） ─── */
+let dealerVerified = null;      // { taxId, name } 或 null
+let _dealerTimer   = null;
+let _dealerSeq     = 0;
+
+function onDealerInput() {
+  const inp  = document.getElementById('dealerInput');
+  const box  = document.getElementById('dealerName');
+  inp.value  = inp.value.replace(/\D/g, '').slice(0, 8);
+  dealerVerified = null;
+  inp.classList.remove('field-err');
+  clearTimeout(_dealerTimer);
+
+  if (inp.value.length < 8) {
+    box.className = 'dealer-name';
+    box.textContent = inp.value.length ? `已輸入 ${inp.value.length} / 8 碼` : '— 尚未驗證 —';
+    return;
+  }
+  box.className = 'dealer-name pending';
+  box.textContent = '驗證中…';
+  _dealerTimer = setTimeout(() => verifyDealer(inp.value), 250);
+}
+
+async function verifyDealer(taxId) {
+  const box = document.getElementById('dealerName');
+  const seq = ++_dealerSeq;
+  try {
+    const res  = await fetch(`${GAS_URL}?action=verify&taxId=${encodeURIComponent(taxId)}`, { method: 'GET' });
+    const data = await res.json();
+    if (seq !== _dealerSeq) return;               // 使用者又改了輸入，丟棄舊結果
+    if (data.ok && data.valid) {
+      dealerVerified = { taxId, name: data.name };
+      box.className = 'dealer-name ok';
+      box.textContent = `✔ ${data.name}`;
+    } else {
+      dealerVerified = null;
+      box.className = 'dealer-name err';
+      box.textContent = '✖ 查無此經銷統編';
+    }
+  } catch (err) {
+    if (seq !== _dealerSeq) return;
+    dealerVerified = null;
+    box.className = 'dealer-name err';
+    box.textContent = '✖ 驗證失敗，請檢查網路後重試';
+  }
+}
+
+function buildExportPayload() {
+  const orderDate = todayStr();
+  const dealerTaxId = dealerVerified ? dealerVerified.taxId : '';
+  const dealerName  = dealerVerified ? dealerVerified.name  : '';
+  const siteName  = document.getElementById('siteInput').value.trim() || '';
+  const pickup    = document.getElementById('pickupInput')?.checked ? '✔' : '—';
+  const adSource  = document.getElementById('sourceInput')?.value || '';
+
+  // 1. 全案明細總表（扁平化，不含表頭；表頭由 Apps Script 端維護）
+  const summaryRows = [];
+
+  // 2. 各組分頁內容
+  const groups = [];
+
+  tracks.forEach((t, idx) => {
+    const id    = t.id;
+    const label = NUM_LABELS[idx] || ('第'+(idx+1)+'組');
+    const qty   = Math.max(1, parseInt(document.getElementById('qty_' + id)?.value) || 1);
+    const mode  = getColorMode(id);
+
+    const wEl    = document.getElementById('w_' + id);
+    const hEl    = document.getElementById('h_' + id);
+    const width  = parseFloat(wEl?.value) || '';
+    const height = parseFloat(hEl?.value) || '';
+    const best   = wEl?.dataset.best ? JSON.parse(wEl.dataset.best) : null;
+    const lockW  = getLockedWidth(id);
+    const trackColor = getTrackColor(id) || '—';
+
+    const ckDt = document.getElementById('ck_dt_' + id)?.checked ? '✔' : '—';
+    const ckRd = document.getElementById('ck_rd_' + id)?.checked ? '✔' : '—';
+    const ckFp = document.getElementById('ck_fp_' + id)?.checked ? '✔' : '—';
+
+    const modeLabel = { single:'單色', double:'雙色', multi:'多色' }[mode] || mode;
+
+    const fabRows = [];
+    const tbody = document.getElementById('tbody_' + id);
+    if (tbody) {
+      tbody.querySelectorAll('tr').forEach(tr => {
+        const rowLabel  = tr.querySelector('td:first-child')?.textContent?.trim() || '';
+        const pcFixed   = tr.querySelector('.pc-fixed');
+        const pcInput   = tr.querySelector('.pc-input-' + id);
+        const pcDerived = tr.querySelector('.pc-derived');
+        const typeEl    = tr.querySelector('.fab-type-' + id);
+        const lenEl     = tr.querySelector('.fab-len-'  + id);
+        let pcVal = '';
+        if (pcFixed)        pcVal = pcFixed.textContent.replace('片','').trim() + ' 片';
+        else if (pcInput) {
+          const n = parseInt(pcInput.value) || 0;
+          if (mode === 'multi' && n <= 0) return;        // 多色片數 0 → 略過此列
+          pcVal = n + ' 片';
+        }
+        else if (pcDerived) pcVal = pcDerived.textContent.trim();
+        const fabCode = typeEl ? typeEl.value : '';
+        fabRows.push([
+          rowLabel,
+          pcVal,
+          fabCode,
+          fabCode ? `images/${fabCode}${FABRIC_EXT}` : '',
+          lenEl ? (parseFloat(lenEl.value)||'') : ''
+        ]);
+      });
+    }
+
+    const base = [
+      dealerName, dealerTaxId,
+      siteName, orderDate, label, qty, width, height,
+      lockW ? (lockW + ' cm') : '—',
+      best ? best.sku : '無對應',
+      best ? (best.pieces + ' 片') : '—',
+      best ? best.panel_width : '—',
+      best ? (best.is_double_track ? '雙軌單開系列' : '單軌系列') : '—',
+      trackColor,
+      modeLabel, ckDt, ckRd, ckFp, pickup, adSource || '—'
+    ];
+    if (fabRows.length) fabRows.forEach(r => summaryRows.push([...base, r[0], r[1], r[2], r[3], r[4]]));
+    else summaryRows.push([...base, '—', '—', '—', '—', '—']);
+
+    const rows = [];
+    rows.push([`片簾規格建單 — ${label}`]); rows.push([]);
+    rows.push(['經銷商', dealerName, dealerTaxId]);
+    if (siteName) rows.push(['案場', siteName]);
+    rows.push(['自取', pickup]);
+    if (adSource) rows.push(['廣告來源', adSource]);
+    rows.push(['建單日期', orderDate]);
+    rows.push(['數量（份）', qty]); rows.push([]);
+    rows.push(['【規格結果】']);
+    if (best) {
+      rows.push(['商品編號',      best.sku]);
+      rows.push(['組合片數',      best.pieces + ' 片']);
+      rows.push(['單片寬幅 (cm)', best.panel_width]);
+      rows.push(['鎖定寬幅',      lockW ? ('✔ ' + lockW + ' cm') : '—']);
+      rows.push(['遮蔽寬度 (cm)', width]);
+      rows.push(['高度 (cm)',     height]);
+      rows.push(['軌道類型',      best.is_double_track ? '雙軌單開系列' : '單軌系列']);
+      rows.push(['軌道顏色',      trackColor]);
+      rows.push(['布色模式',      modeLabel]);
+    } else {
+      rows.push(['遮蔽寬度 (cm)', width]);
+      rows.push(['高度 (cm)',     height]);
+      rows.push(['備註', '尚未輸入有效寬度，無對應規格']);
+    }
+    rows.push([]);
+    rows.push(['【加工選項】']);
+    rows.push(['雙馬尾製作',   ckDt]);
+    rows.push(['轉向拉棒五金', ckRd]);
+    rows.push(['附防焰證明',   ckFp]);
+    rows.push([]);
+    if (fabRows.length) {
+      rows.push(['【布料明細】']);
+      rows.push(['色別／片號', '片數', '布種', '花色圖檔', '長度 (cm)']);
+      fabRows.forEach(r => rows.push(r));
+    }
+    groups.push({ name: label, rows });
+  });
+
+  return { dealerTaxId, dealerName, siteName, pickup, adSource, orderDate, summaryRows, groups };
+}
+
+function setExportStatus(msg, kind) {
+  const el = document.getElementById('exportStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'export-status' + (kind ? ' ' + kind : '');
+}
+
+/* ─── 匯出前必填檢核 ─── */
+function clearFieldErrors() {
+  document.querySelectorAll('.field-err').forEach(el => el.classList.remove('field-err'));
+  document.querySelectorAll('.tab-btn.tab-err').forEach(el => el.classList.remove('tab-err'));
+}
+
+function validateBeforeExport() {
+  clearFieldErrors();
+  const errors = [];
+  let firstBadTrack = null;
+  const mark = el => { if (el) el.classList.add('field-err'); };
+
+  // 經銷統編（需通過驗證）
+  const dealerEl = document.getElementById('dealerInput');
+  if (!dealerVerified) {
+    errors.push(dealerEl.value.length === 8 ? '經銷統編（未通過驗證）' : '經銷統編');
+    mark(dealerEl);
+  }
+
+  // 案場名稱
+  const siteEl = document.getElementById('siteInput');
+  if (!siteEl.value.trim()) { errors.push('案場名稱'); mark(siteEl); }
+
+  // 廣告來源
+  const srcEl = document.getElementById('sourceInput');
+  if (!srcEl.value) { errors.push('廣告來源'); mark(srcEl); }
+
+  tracks.forEach((t, idx) => {
+    const id    = t.id;
+    const label = NUM_LABELS[idx] || ('第'+(idx+1)+'組');
+    const wEl   = document.getElementById('w_' + id);
+    const hEl   = document.getElementById('h_' + id);
+    const width  = parseFloat(wEl?.value);
+    const height = parseFloat(hEl?.value);
+    const best   = wEl?.dataset.best ? JSON.parse(wEl.dataset.best) : null;
+    const trackErrs = [];
+
+    if (isNaN(width) || width <= 0) { trackErrs.push('遮蔽寬度'); mark(wEl); }
+    if (isNaN(height) || height <= 0) { trackErrs.push('高度'); mark(hEl); }
+
+    // 單片寬幅／軌道類型 皆由比對規格產生，無對應規格即視為缺漏
+    if (!best) {
+      if (!isNaN(width) && width > 0) { trackErrs.push('單片寬幅／軌道類型（無對應規格）'); mark(wEl); }
+      else trackErrs.push('單片寬幅／軌道類型（需先輸入有效遮蔽寬度）');
+    }
+
+    // 軌道顏色 白/黑
+    if (!getTrackColor(id)) { trackErrs.push('軌道顏色（白／黑）'); mark(document.getElementById('tcopts_' + id)); }
+
+    // 布色模式
+    if (!document.querySelector(`input[name="clr_${id}"]:checked`)) trackErrs.push('布色模式');
+
+    // 布種編號：每一列布料明細都必須選擇
+    if (best) {
+      const sels = document.querySelectorAll('.fab-type-' + id);
+      if (!sels.length) {
+        trackErrs.push('布種編號');
+      } else {
+        let missing = 0;
+        sels.forEach(s => { if (s.disabled) return; if (!s.value) { missing++; mark(s); } });
+        if (missing) trackErrs.push(`布種編號（尚有 ${missing} 列未選）`);
+      }
+    }
+
+    if (trackErrs.length) {
+      errors.push(`${label}：${trackErrs.join('、')}`);
+      document.getElementById('tab_' + id)?.classList.add('tab-err');
+      if (!firstBadTrack) firstBadTrack = id;
+    }
+  });
+
+  if (errors.length) {
+    if (firstBadTrack) switchTab(firstBadTrack);
+    const msg = '以下必填欄位尚未完成，無法匯出：\n' + errors.map(e => '・' + e).join('\n');
+    setExportStatus('✖ ' + msg, 'err');
+    alert(msg);
+    return false;
+  }
+  return true;
+}
+
+async function exportToSheet() {
+  if (!tracks.length) { alert('請先新增軌道組。'); return; }
+  if (!validateBeforeExport()) return;
+  if (!GAS_URL || GAS_URL.startsWith('PASTE_')) { alert('尚未設定 Apps Script 網址（GAS_URL）。'); return; }
+
+  const btn = document.querySelector('.btn-export');
+  const payload = buildExportPayload();
+  btn.disabled = true;
+  setExportStatus('寫入雲端試算表中…', 'pending');
+
+  try {
+    // 用 text/plain 送出可避免瀏覽器 CORS 預檢，Apps Script 端再 JSON.parse
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '未知錯誤');
+    setExportStatus(`✔ 已寫入：總表新增 ${data.appended} 列，並建立分頁「${data.sheetName}」`, 'ok');
+  } catch (err) {
+    setExportStatus('✖ 寫入失敗：' + err.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ─── Today (local date) ─── */
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* ─── Init ─── */
+(function init() {
+  document.getElementById('orderDateText').textContent = todayStr();
+  addTrack();
+})();
+</script>
+</body>
+</html>
