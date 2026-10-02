@@ -889,12 +889,13 @@ function _updateMultiHint(id, total) {
   if (!hintEl) return;
   let sum = 0;
   inputs.forEach(el => { sum += Math.max(0, parseInt(el.value) || 0); });
-  const ok = sum === total;
+  const ok = sum >= 1 && sum <= total;
   inputs.forEach(el => el.classList.toggle('err', !ok));
   hintEl.className = 'piece-total-hint ' + (ok ? 'ok' : 'warn');
-  hintEl.textContent = ok
-    ? `各列片數合計 ${sum} 片 ＝ 總片數 ${total} 片 ✓`
-    : `⚠ 各列片數合計 ${sum} 片，需等於總片數 ${total} 片（差 ${total - sum} 片）`;
+  if (sum === 0)          hintEl.textContent = '⚠ 至少需要 1 片';
+  else if (sum > total)   hintEl.textContent = `⚠ 各列片數合計 ${sum} 片，超過總片數 ${total} 片`;
+  else if (sum < total)   hintEl.textContent = `購買 ${sum} 片，其餘 ${total - sum} 片不選色 ✓`;
+  else                    hintEl.textContent = `各列片數合計 ${sum} 片 ＝ 總片數 ${total} 片 ✓`;
 }
 
 /* ─── Sync height → fabric lengths ─── */
